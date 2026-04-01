@@ -1,0 +1,16 @@
+dataset: CiteULikeA
+
+# Use fixed benchmark files: CiteULikeA.train/valid/test.inter
+benchmark_filename: ['train', 'valid', 'test']
+load_col:
+  inter: [user_id, item_id]
+
+# Training/Evaluation
+eval_setting: RO_RS,full
+group_by_user: True
+metrics: ["Recall", "NDCG"]
+topk: [10, 20, 50]
+
+# Optional speed tuning
+train_batch_size: 1024
+eval_batch_size: 8192
