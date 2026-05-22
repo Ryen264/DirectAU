@@ -8,6 +8,7 @@ recbole.quick_start
 """
 import logging
 from logging import getLogger
+from time import time
 
 from recbole.config import Config
 from recbole.data import create_dataset, data_preparation
@@ -85,12 +86,33 @@ def objective_function(config_dict=None, config_file_list=None, saved=True):
     train_data, valid_data, test_data = data_preparation(config, dataset)
     model = get_model(config['model'])(config, train_data).to(config['device'])
     trainer = get_trainer(config['MODEL_TYPE'], config['model'])(config, model)
+
     best_valid_score, best_valid_result = trainer.fit(train_data, valid_data, verbose=False, saved=saved)
+    test_start_time = time()
     test_result = trainer.evaluate(test_data, load_best_model=saved)
+    test_end_time = time()
 
     return {
         'best_valid_score': best_valid_score,
         'valid_score_bigger': config['valid_metric_bigger'],
         'best_valid_result': best_valid_result,
-        'test_result': test_result
+        'test_result': test_result,
+        'best_epoch': trainer.best_valid_epoch,
+        'valid_metric': config['valid_metric'],
+        'time': {
+            'train_time': trainer.train_time,
+            'valid_time': trainer.valid_time,
+            'test_time': test_end_time - test_start_time,
+            'total_time': trainer.train_time + trainer.valid_time + (test_end_time - test_start_time),
+        },
+        'config': {
+            'tuni': config['tuni'],
+            'epochs': config['epochs'],
+            'learning_rate': config['learning_rate'],
+            'gamma': config['gamma'],
+            'weight_decay': config['weight_decay'],
+            'encoder': config['encoder'],
+            'train_batch_size': config['train_batch_size'],
+            'valid_metric': config['valid_metric'],
+        },
     }

@@ -98,6 +98,9 @@ class Trainer(AbstractTrainer):
         self.cur_step = 0
         self.best_valid_score = -np.inf if self.valid_metric_bigger else np.inf
         self.best_valid_result = None
+        self.best_valid_epoch = None
+        self.train_time = 0.0
+        self.valid_time = 0.0
         self.train_loss_dict = dict()
         self.optimizer = self._build_optimizer(self.model.custom_parameters())
         self.eval_type = config['eval_type']
@@ -291,6 +294,7 @@ class Trainer(AbstractTrainer):
             train_loss = self._train_epoch(train_data, epoch_idx, show_progress=show_progress)
             self.train_loss_dict[epoch_idx] = sum(train_loss) if isinstance(train_loss, tuple) else train_loss
             training_end_time = time()
+            self.train_time += training_end_time - training_start_time
             train_loss_output = \
                 self._generate_train_loss_output(epoch_idx, training_start_time, training_end_time, train_loss)
             if verbose:
@@ -329,6 +333,9 @@ class Trainer(AbstractTrainer):
                         if verbose:
                             self.logger.info(update_output)
                     self.best_valid_result = valid_result
+                    self.best_valid_epoch = epoch_idx
+
+                self.valid_time += valid_end_time - valid_start_time
 
                 if callback_fn:
                     callback_fn(epoch_idx, valid_score)

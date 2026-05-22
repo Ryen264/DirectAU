@@ -10,8 +10,62 @@
 
 import argparse
 from ast import literal_eval
+from numbers import Number
 
 from recbole.quick_start import objective_function
+
+
+METRIC_KEYS = ['recall@10', 'recall@20', 'recall@50', 'ndcg@10', 'ndcg@20', 'ndcg@50']
+
+
+def _to_python_value(value):
+    if isinstance(value, Number):
+        return float(value)
+    return value
+
+
+def _format_metric_block(result_dict):
+    lines = []
+    for key in METRIC_KEYS:
+        if key in result_dict:
+            lines.append(f'{key}: {_to_python_value(result_dict[key])}')
+    return '\n'.join(lines)
+
+
+def _format_time_block(time_dict):
+    return '\n'.join([
+        f'training time: {_to_python_value(time_dict["train_time"]):.4f}s',
+        f'valid time: {_to_python_value(time_dict["valid_time"]):.4f}s',
+        f'test time: {_to_python_value(time_dict["test_time"]):.4f}s',
+        f'total time: {_to_python_value(time_dict["total_time"]):.4f}s',
+    ])
+
+
+def _format_config_block(config_dict):
+    return '\n'.join([
+        f'T-Uni (tuni): {config_dict["tuni"]}',
+        f'Epochs: {config_dict["epochs"]}',
+        f'Learning Rate: {config_dict["learning_rate"]}',
+        f'Gamma: {config_dict["gamma"]}',
+        f'Weight Decay: {config_dict["weight_decay"]}',
+        f'Encoder: {config_dict["encoder"]}',
+        f'Train Batch Size: {config_dict["train_batch_size"]}',
+    ])
+
+
+def _format_result_section(title, result_dict):
+    best_metric_name = result_dict.get('valid_metric', 'NDCG@20')
+    lines = [title]
+    lines.append(f'Test Result:\n{_format_metric_block(result_dict["test_result"])}')
+    lines.append(f'Valid Result:\n{_format_metric_block(result_dict["best_valid_result"])}')
+    lines.append(
+        'Best Valid:\n'
+        f'Best Epoch: {result_dict["best_epoch"]}\n'
+        f'Best {best_metric_name}: {result_dict["best_valid_score"]}'
+    )
+    lines.append(f'Time (s):\n{_format_time_block(result_dict["time"])}')
+    lines.append(f'Config:\n{_format_config_block(result_dict["config"])}')
+    return '\n'.join(lines)
 
 
 def _parse_fixed_config_dict(extra_args):
@@ -71,11 +125,7 @@ def main():
                 saved=True,
             )
             all_results.append((tuni, result))
-            print(f'tuni={tuni}')
-            print('best valid result:')
-            print(result['best_valid_result'])
-            print('test result:')
-            print(result['test_result'])
+            print(_format_result_section(f'tuni={tuni}', result))
             print()
 
             score = result['best_valid_score']
@@ -90,23 +140,20 @@ def main():
 
         print('all results:')
         for tuni, result in all_results:
-            print(f'tuni={tuni}: best_valid_score={result["best_valid_score"]}, best_valid_result={result["best_valid_result"]}, test_result={result["test_result"]}')
+            print(f'tuni={tuni}: best_valid_score={result["best_valid_score"]}, best_epoch={result["best_epoch"]}')
         print('best params: ', best_params)
-        print('best result: ')
-        print(best_result)
+        print(_format_result_section('best result', best_result))
 
         with open(args.output_file, 'w', encoding='utf-8') as fp:
             for tuni, result in all_results:
-                fp.write(f'tuni={tuni}\n')
-                fp.write(f'best_valid_score: {result["best_valid_score"]}\n')
-                fp.write(f'best_valid_result: {result["best_valid_result"]}\n')
-                fp.write(f'test_result: {result["test_result"]}\n\n')
-            fp.write(f'best params: {best_params}\n')
-            fp.write(f'best result: {best_result}\n')
+                fp.write(_format_result_section(f'tuni={tuni}', result))
+                fp.write('\n\n')
+            fp.write(f'Best Params: {best_params}\n\n')
+            fp.write(_format_result_section('Best Result', best_result))
     else:
         result = objective_function(config_dict=fixed_config_dict, config_file_list=config_file_list, saved=True)
         print('best result: ')
-        print(result)
+        print(_format_result_section('best result', result))
 
 
 if __name__ == '__main__':
