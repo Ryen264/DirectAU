@@ -17,9 +17,12 @@ def alignment(x, y):
     return (x - y).norm(p=2, dim=1).pow(2).mean()
 
 @staticmethod
-def uniformity(x):
+# def uniformity(x, tuni=2):
+#     x = F.normalize(x, dim=-1)
+#     return torch.pdist(x, p=2).pow(2).mul(-tuni).exp().mean().log()
+def uniformity(x, tuni=2):
     x = F.normalize(x, dim=-1)
-    return torch.pdist(x, p=2).pow(2).mul(-2).exp().mean().log()
+    return torch.pdist(x, p=2).pow(2).mul(-tuni).exp().mean().log()
 
 def calculate_loss(self, user, item):
     user_e, item_e = self.encoder(user, item)  # [bsz, dim]
@@ -36,19 +39,22 @@ We integrate our DirectAU method ([directau.py](https://github.com/THUwangcy/Dir
 python run_recbole.py \
     --model=DirectAU --dataset=Beauty \
     --learning_rate=1e-3 --weight_decay=1e-6 \
-    --gamma=0.5 --encoder=MF --train_batch_size=256
+    --gamma=0.5 --encoder=MF --train_batch_size=256 \
+    --tuni=2
 
 # Gowalla
 python run_recbole.py \
     --model=DirectAU --dataset=Gowalla \
     --learning_rate=1e-3 --weight_decay=1e-6 \
-    --gamma=5 --encoder=MF --train_batch_size=1024
+    --gamma=5 --encoder=MF --train_batch_size=1024 \
+    --tuni=2
 
 # Yelp2018
 python run_recbole.py \
     --model=DirectAU --dataset=Yelp \
     --learning_rate=1e-3 --weight_decay=1e-6 \
-    --gamma=1 --encoder=MF --train_batch_size=1024
+    --gamma=1 --encoder=MF --train_batch_size=1024 \
+    --tuni=2
 ```
 
 To test DirectAU on other datasets, you should prepare datasets similar to the existing ones. More explanations about the dataset format can be found in the [Atomic Files](https://recbole.io/atomic_files.html) of RecBole. 
@@ -59,6 +65,7 @@ The main hyper-parameters of DirectAU includes:
 | ------------------ | ------- | ---------------------------------------------- |
 | `--embedding_size` | 64      | The embedding size.                            |
 | `--gamma`          | 1       | The weight of the uniformity loss.             |
+| `--tuni`           | 2       | The temperature in the uniformity loss.        |
 | `--encoder`        | MF      | The encoder type: MF / LightGCN                |
 | `--n_layers`       | None    | The number of layers when `--encoder=LightGCN` |
 
@@ -88,7 +95,7 @@ def overall_align(user_index, item_index, user_emb, item_emb):
     y = F.normalize(item_emb[item_index], dim=-1)
     return (x - y).norm(p=2, dim=1).pow(alpha).mean()
 
-def overall_uniform(index_list, embedding):
+def overall_uniform(index_list, embedding, tuni=2):
     """ Args:
     index_list (torch.LongTensor): user/item ids of positive interactions, shape: [|R|, ]
     embedding (torch.nn.Embedding): user/item embeddings, shape: [|U|, dim] or [|I|, dim]
@@ -102,7 +109,7 @@ def overall_uniform(index_list, embedding):
         torch.nonzero(torch.triu(weight_matrix, 1).view(-1)).view(-1)].to(embedding.device)
     total_freq = (len(index_list) * len(index_list) - weight_matrix.trace()) / 2
 
-    return torch.pdist(embedding[count_series.index], p=2).pow(2).mul(-2).exp().mul(weight).sum().div(total_freq).log()
+    return torch.pdist(embedding[count_series.index], p=2).pow(2).mul(-tuni).exp().mul(weight).sum().div(total_freq).log()
 ```
 
 <img title="" src="./asset/measurement.png" alt="measurement" width="491">

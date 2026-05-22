@@ -21,6 +21,7 @@ class DirectAU(GeneralRecommender):
         # load parameters info
         self.embedding_size = config['embedding_size']
         self.gamma = config['gamma']
+        self.tuni = config['tuni']
         self.encoder_name = config['encoder']
 
         # define layers and loss
@@ -74,8 +75,8 @@ class DirectAU(GeneralRecommender):
         return (x - y).norm(p=2, dim=1).pow(alpha).mean()
 
     @staticmethod
-    def uniformity(x, t=2):
-        return torch.pdist(x, p=2).pow(2).mul(-t).exp().mean().log()
+    def uniformity(x, tuni=2):
+        return torch.pdist(x, p=2).pow(2).mul(-tuni).exp().mean().log()
 
     def calculate_loss(self, interaction):
         if self.restore_user_e is not None or self.restore_item_e is not None:
@@ -86,7 +87,7 @@ class DirectAU(GeneralRecommender):
 
         user_e, item_e = self.forward(user, item)
         align = self.alignment(user_e, item_e)
-        uniform = self.gamma * (self.uniformity(user_e) + self.uniformity(item_e)) / 2
+        uniform = self.gamma * (self.uniformity(user_e, self.tuni) + self.uniformity(item_e, self.tuni)) / 2
 
         return align + uniform
 

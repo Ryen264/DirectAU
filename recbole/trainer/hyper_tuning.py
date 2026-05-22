@@ -87,6 +87,17 @@ def exhaustive_search(new_ids, domain, trials, seed, nbMaxSucessiveFailures=1000
     """
     from hyperopt import pyll
     from hyperopt.base import miscs_update_idxs_vals
+
+    class _RandomStateCompat:
+        def __init__(self, random_state):
+            self._random_state = random_state
+
+        def integers(self, low, high=None, size=None):
+            return self._random_state.randint(low, high=high, size=size)
+
+        def __getattr__(self, name):
+            return getattr(self._random_state, name)
+
     # Build a hash set for previous trials
     hashset = set([
         hash(
@@ -95,7 +106,7 @@ def exhaustive_search(new_ids, domain, trials, seed, nbMaxSucessiveFailures=1000
         ) for trial in trials.trials
     ])
 
-    rng = np.random.RandomState(seed)
+    rng = _RandomStateCompat(np.random.RandomState(seed))
     rval = []
     for _, new_id in enumerate(new_ids):
         newSample = False

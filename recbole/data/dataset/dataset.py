@@ -399,7 +399,7 @@ class Dataset(object):
             ftype = self.field2type[field]
             if not ftype.value.endswith('seq'):
                 continue
-            df[field].fillna(value='', inplace=True)
+            df[field] = df[field].fillna(value='')
             if ftype == FeatureType.TOKEN_SEQ:
                 df[field] = [np.array(list(filter(None, _.split(seq_separator)))) for _ in df[field].values]
             elif ftype == FeatureType.FLOAT_SEQ:
@@ -495,9 +495,9 @@ class Dataset(object):
             for field in feat:
                 ftype = self.field2type[field]
                 if ftype == FeatureType.TOKEN:
-                    feat[field].fillna(value=0, inplace=True)
+                    feat[field] = feat[field].fillna(value=0)
                 elif ftype == FeatureType.FLOAT:
-                    feat[field].fillna(value=feat[field].mean(), inplace=True)
+                    feat[field] = feat[field].fillna(value=feat[field].mean())
                 else:
                     dtype = np.int64 if ftype == FeatureType.TOKEN_SEQ else float
                     feat[field] = feat[field].apply(lambda x: np.array([], dtype=dtype) if isinstance(x, float) else x)
@@ -1676,13 +1676,13 @@ class Dataset(object):
             value = data[k].values
             ftype = self.field2type[k]
             if ftype == FeatureType.TOKEN:
-                new_data[k] = torch.LongTensor(value)
+                new_data[k] = torch.as_tensor(np.array(value, copy=True), dtype=torch.long)
             elif ftype == FeatureType.FLOAT:
-                new_data[k] = torch.FloatTensor(value)
+                new_data[k] = torch.as_tensor(np.array(value, copy=True), dtype=torch.float)
             elif ftype == FeatureType.TOKEN_SEQ:
-                seq_data = [torch.LongTensor(d[:self.field2seqlen[k]]) for d in value]
+                seq_data = [torch.as_tensor(np.array(d[:self.field2seqlen[k]], copy=True), dtype=torch.long) for d in value]
                 new_data[k] = rnn_utils.pad_sequence(seq_data, batch_first=True)
             elif ftype == FeatureType.FLOAT_SEQ:
-                seq_data = [torch.FloatTensor(d[:self.field2seqlen[k]]) for d in value]
+                seq_data = [torch.as_tensor(np.array(d[:self.field2seqlen[k]], copy=True), dtype=torch.float) for d in value]
                 new_data[k] = rnn_utils.pad_sequence(seq_data, batch_first=True)
         return Interaction(new_data)
